@@ -1,45 +1,21 @@
-{
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    {
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
+            "name": "link-checker",
+            "type": "cppvsdbg",
             "request": "launch",
-            "name": "Debug executable 'link_checker'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=link_checker",
-                    "--package=link_checker"
-                ],
-                "filter": {
-                    "name": "link_checker",
-                    "kind": "bin"
-                }
-            },
+            "program": "${workspaceRoot}/target/debug/link_checker.exe",
             "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'link_checker'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=link_checker",
-                    "--package=link_checker"
-                ],
-                "filter": {
-                    "name": "link_checker",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "stopAtEntry": false,
+            "cwd": "${workspaceRoot}/target/debug/",
+            "environment": [{"name":"RUST_BACKTRACE", "value":"1"} , {"name":"RUST_LOG", "value":"debug"}],
+            "console":"integratedTerminal",
+            "preLaunchTask": "rust: cargo build",
+            
         }
     ]
 }
