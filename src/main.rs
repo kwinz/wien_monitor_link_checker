@@ -21,8 +21,8 @@ async fn main() -> Result<(), Error> {
 
     let start = Instant::now();
 
-    for i in 1..2 {
-        //for i in 1..10 {
+    //for i in 1..2 {
+    for i in 1..10 {
         let page_url = if i == 1 {
             regierungsabkommen_url.to_string()
         } else {
@@ -139,7 +139,14 @@ async fn main() -> Result<(), Error> {
 
     for status in status_to_url_map.keys() {
         page = page.with_header(1, format!("{:?}", status));
-        page = page.with_paragraph(format!("{:?}", status_to_url_map.get(status)));
+
+        for url in status_to_url_map.get(status).unwrap() {
+            page = page.with_header(2, url);
+
+            for usage in url_to_usage_map.get(url).unwrap() {
+                page = page.with_paragraph(format!("{}", usage));
+            }
+        }
     }
 
     let html_string = page.to_html_string();
