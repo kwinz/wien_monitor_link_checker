@@ -141,7 +141,17 @@ async fn main() -> Result<(), Error> {
 
     //print!("{:?}", status_to_url_map);
 
-    let mut page = HtmlPage::new().with_title("Wien Regierungsmonitor Link Checker Report");
+    let title = "Wien Regierungsmonitor Link Checker Report";
+    let mut page = HtmlPage::new().with_title(title);
+    page = page.with_style(
+        r#"
+    body {
+      font-family: Arial, Helvetica, sans-serif
+    }"#,
+    );
+
+    page = page.with_header(1, title);
+
     let utc_time = Utc::now();
     let formatted_time: String = utc_time.format("%Y-%m-%d_%H:%M:%S").to_string();
 
@@ -166,19 +176,19 @@ async fn main() -> Result<(), Error> {
     for status in status_to_url_map.keys() {
         match status {
             WebStatus::Error => {
-                page = page.with_header(1, "Netzwerk-Fehler");
+                page = page.with_header(2, "Netzwerk-Fehler");
             }
             WebStatus::Result(status_code) => {
                 if status_code.as_u16() == 200u16 {
-                    page = page.with_header(1, "Erfolgreich (OK)");
+                    page = page.with_header(2, "Erfolgreich (OK)");
                 } else {
-                    page = page.with_header(1, format!("Fehler: {}", status_code));
+                    page = page.with_header(2, format!("Fehler: {}", status_code));
                 }
             }
         }
 
         for url in status_to_url_map.get(status).unwrap() {
-            page = page.with_header(2, url);
+            page = page.with_header(3, url);
 
             for usage in url_to_usage_map.get(url).unwrap() {
                 page = page.with_paragraph(format!("{}", usage));
