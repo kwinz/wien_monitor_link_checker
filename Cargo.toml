@@ -9,3 +9,4 @@ edition = "2021"
 reqwest = "0.12.9"
 tokio = { version = "1", features = ["full"] }
 regex = "1"
+itertools = "0.13.0"
