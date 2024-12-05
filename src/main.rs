@@ -187,18 +187,21 @@ async fn main() -> Result<(), Error> {
         }
 
         for url in status_to_url_map.get(status).unwrap() {
-            page = page.with_header(3, url);
+            let url_link = HtmlElement::new(HtmlTag::Link)
+                .with_attribute("href", url)
+                .with_child(url.into());
+            let mut url_headline = HtmlElement::new(HtmlTag::Heading3);
+            url_headline = url_headline.with_child(url_link.into());
+            page = page.with_raw(url_headline.to_html_string());
+
             let usages = url_to_usage_map.get(url).unwrap();
-
-            let mut element = HtmlElement::new(HtmlTag::UnorderedList);
-
+            let mut unordered_list = HtmlElement::new(HtmlTag::UnorderedList);
             for usage in usages {
                 let mut list_element = HtmlElement::new(HtmlTag::ListElement);
                 list_element.add_paragraph(usage.to_string());
-                element = element.with_child(list_element.into());
+                unordered_list = unordered_list.with_child(list_element.into());
             }
-
-            page = page.with_raw(element.to_html_string());
+            page = page.with_raw(unordered_list.to_html_string());
         }
     }
 
