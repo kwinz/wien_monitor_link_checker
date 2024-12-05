@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "link-checker",
+            "name": "wien_monitor_link_checker",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceRoot}/target/debug/link_checker.exe",
+            "program": "${workspaceRoot}/target/debug/wien_monitor_link_checker.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}/target/debug/",

@@ -1,5 +1,5 @@
 [package]
-name = "link_checker"
+name = "wien_monitor_link_checker"
 version = "0.1.0"
 edition = "2021"
 
