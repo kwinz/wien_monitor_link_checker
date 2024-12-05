@@ -45,8 +45,13 @@ async fn main() -> Result<(), Error> {
             let lol = &body[start..end];
 
             let links: Vec<_> = re2
-                .find_iter(lol)
-                .map(|link_match| link_match.as_str())
+                .captures_iter(lol)
+                .map(|link_match| {
+                    //get(0) is the full capture
+                    let url = link_match.get(1).expect("url missing").as_str();
+                    let name = link_match.get(2).expect("name missing").as_str();
+                    format!("{name} : {url}")
+                })
                 .collect();
 
             println!("Match {} {:?}\n", name, links);
