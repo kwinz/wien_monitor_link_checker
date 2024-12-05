@@ -1,6 +1,7 @@
 use itertools::Itertools;
 use regex::Regex;
 use reqwest::{Error, Response};
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -9,6 +10,8 @@ async fn main() -> Result<(), Error> {
     let uncompiled_link_regex = "<a href=\"(.*)\">(.*)</a>";
 
     let mut urls = vec![];
+
+    let start = Instant::now();
 
     for i in 1..10 {
         let page_url = if i == 1 {
@@ -74,9 +77,15 @@ async fn main() -> Result<(), Error> {
         }
     }
 
+    let duration = start.elapsed();
+
+    // Convert the duration to milliseconds
+    let elapsed_ms = duration.as_millis();
+    println!("fetched 9 pages in {} ms", elapsed_ms);
+
     urls.sort_unstable();
 
-    println!("Urls {:?}\n", urls);
+    //println!("Urls {:?}\n", urls);
 
     Ok(())
 }
