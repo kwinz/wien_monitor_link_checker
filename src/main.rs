@@ -1,4 +1,4 @@
-use build_html::{Html, HtmlContainer, HtmlPage};
+use build_html::{Html, HtmlContainer, HtmlElement, HtmlPage, HtmlTag};
 use chrono::Utc;
 use regex::Regex;
 use reqwest::{Error, Response, StatusCode};
@@ -24,8 +24,7 @@ async fn main() -> Result<(), Error> {
 
     let start = Instant::now();
 
-    for i in 1..2 {
-        //for i in 1..10 {
+    for i in 1..10 {
         let page_url = if i == 1 {
             regierungsabkommen_url.to_string()
         } else {
@@ -162,7 +161,7 @@ async fn main() -> Result<(), Error> {
         timeout_duration.as_millis()
     ));
     page = page.with_paragraph(format!(
-        "Regierungsmonitor abrufen und geparst erfolgreich in: {}ms",
+        "Regierungsmonitor abgerufen und geparst in: {}ms",
         elapsed_regierungsmonitor_ms
     ));
     page = page.with_paragraph(format!(
@@ -189,10 +188,17 @@ async fn main() -> Result<(), Error> {
 
         for url in status_to_url_map.get(status).unwrap() {
             page = page.with_header(3, url);
+            let usages = url_to_usage_map.get(url).unwrap();
 
-            for usage in url_to_usage_map.get(url).unwrap() {
-                page = page.with_paragraph(format!("{}", usage));
+            let mut element = HtmlElement::new(HtmlTag::UnorderedList);
+
+            for usage in usages {
+                let mut list_element = HtmlElement::new(HtmlTag::ListElement);
+                list_element.add_paragraph(usage.to_string());
+                element = element.with_child(list_element.into());
             }
+
+            page = page.with_raw(element.to_html_string());
         }
     }
 
