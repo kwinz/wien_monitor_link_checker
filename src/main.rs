@@ -1,7 +1,14 @@
 use itertools::Itertools;
 use regex::Regex;
-use reqwest::{Error, Response};
+use reqwest::{Error, Response, StatusCode};
+use std::collections::HashMap;
 use std::time::Instant;
+
+#[derive(Debug, PartialEq, Eq, Clone, Ord, PartialOrd, Hash)]
+pub enum WebStatus {
+    Result(StatusCode),
+    Error,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -9,11 +16,12 @@ async fn main() -> Result<(), Error> {
     let uncompiled_h3_regex = r"<h3>(.*)</h3>"; // Matches HTTP/HTTPS URLs
     let uncompiled_link_regex = "<a href=\"(.*)\">(.*)</a>";
 
-    let mut urls = vec![];
+    let mut url_to_usage_map: HashMap<String, Vec<String>> = HashMap::new();
 
     let start = Instant::now();
 
-    for i in 1..10 {
+    for i in 1..2 {
+        //for i in 1..10 {
         let page_url = if i == 1 {
             regierungsabkommen_url.to_string()
         } else {
@@ -65,12 +73,16 @@ async fn main() -> Result<(), Error> {
                         //    print!("{name} : {url}");
                         //}
 
-                        urls.push(url.to_string());
+                        url_to_usage_map
+                            .entry(url.to_string())
+                            .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
+                            .push(format!("{h3} : {name}"));
+
                         format!("{name} : {url}")
                     })
                     .collect();
 
-                println!("Match {} {:?}\n", h3, links);
+                //println!("Match {} {:?}\n", h3, links);
             }
         } else if let Err(err) = response {
             eprintln!("Failed to make request: {}", err);
@@ -81,11 +93,33 @@ async fn main() -> Result<(), Error> {
 
     // Convert the duration to milliseconds
     let elapsed_ms = duration.as_millis();
-    println!("fetched 9 pages in {} ms", elapsed_ms);
+    println!("fetched and parsed 9 pages in {} ms", elapsed_ms);
 
-    urls.sort_unstable();
+    println!("Found {} unique URLs\n", url_to_usage_map.keys().len());
 
-    //println!("Urls {:?}\n", urls);
+    let mut status_to_url_map: HashMap<WebStatus, Vec<String>> = HashMap::new();
+
+    for unique_url in url_to_usage_map.keys() {
+        println!("{}\n", unique_url);
+
+        let response: Result<reqwest::Response, Error> = reqwest::get(unique_url).await;
+
+        if let Ok(response) = response {
+            //println!("Status {}\n", response.status());
+
+            status_to_url_map
+                .entry(WebStatus::Result(response.status()))
+                .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
+                .push(unique_url.to_owned());
+        } else {
+            status_to_url_map
+                .entry(WebStatus::Error)
+                .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
+                .push(unique_url.to_owned());
+        }
+    }
+
+    print!("{:?}", status_to_url_map);
 
     Ok(())
 }
