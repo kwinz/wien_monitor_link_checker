@@ -18,6 +18,7 @@ async fn main() -> Result<(), Error> {
         //println!("Response Body:\n{}", body);
 
         let re = Regex::new(pattern).unwrap();
+        let re2 = Regex::new(pattern2).unwrap();
 
         let sections: Vec<_> = re
             .find_iter(&body)
@@ -26,18 +27,30 @@ async fn main() -> Result<(), Error> {
             .tuple_windows()
             .map(|(new_match, next)| {
                 let name = new_match.unwrap().as_str();
-                let start: usize = new_match.unwrap().start();
-                let end = new_match.unwrap().end();
+                let text_start = new_match.unwrap().end();
+                let text_end = if let Some(next) = next {
+                    next.start()
+                } else {
+                    body.len()
+                };
 
-                println!("Found match {:?}", new_match);
-                println!("Next match {:?}", next);
-
-                new_match
+                (name, text_start, text_end)
             })
             //.map(|mat| (mat.as_str(), mat.end()))
             .collect();
 
-        println!("Found matchs {:?}", sections);
+        //println!("Found matchs {:?}", sections);
+
+        for (name, start, end) in sections {
+            let lol = &body[start..end];
+
+            let links: Vec<_> = re2
+                .find_iter(lol)
+                .map(|link_match| link_match.as_str())
+                .collect();
+
+            println!("Match {} {:?}\n", name, links);
+        }
     } else if let Err(err) = response {
         eprintln!("Failed to make request: {}", err);
     }
