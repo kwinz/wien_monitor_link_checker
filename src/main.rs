@@ -1,4 +1,5 @@
 use build_html::{Html, HtmlContainer, HtmlPage};
+use chrono::Utc;
 use regex::Regex;
 use reqwest::{Error, Response, StatusCode};
 use std::collections::HashMap;
@@ -11,18 +12,20 @@ pub enum WebStatus {
     Error,
 }
 
+const LIVELINESS_TIMEOUT_PER_URL: u64 = 5000;
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let regierungsabkommen_url = "https://www.wien.gv.at/regierungsabkommen2020/regierungsmonitor/";
-    let uncompiled_h3_regex = r"<h3>(.*)</h3>"; // Matches HTTP/HTTPS URLs
+    let uncompiled_h3_regex = r"<h3>(.*)</h3>";
     let uncompiled_link_regex = "<a href=\"(.*)\">(.*)</a>";
 
     let mut url_to_usage_map: HashMap<String, Vec<String>> = HashMap::new();
 
     let start = Instant::now();
 
-    //for i in 1..2 {
-    for i in 1..10 {
+    for i in 1..2 {
+        //for i in 1..10 {
         let page_url = if i == 1 {
             regierungsabkommen_url.to_string()
         } else {
@@ -90,16 +93,19 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    let duration = start.elapsed();
-    let elapsed_ms = duration.as_millis();
-    println!("fetched and parsed 9 pages in {} ms", elapsed_ms);
+    let duration: std::time::Duration = start.elapsed();
+    let elapsed_regierungsmonitor_ms = duration.as_millis();
+    println!(
+        "fetched and parsed 9 pages in {} ms",
+        elapsed_regierungsmonitor_ms
+    );
     let start = Instant::now();
 
     println!("Found {} unique URLs\n", url_to_usage_map.keys().len());
 
     let mut status_to_url_map: HashMap<WebStatus, Vec<String>> = HashMap::new();
 
-    let timeout_duration = tokio::time::Duration::from_millis(5000);
+    let timeout_duration = tokio::time::Duration::from_millis(LIVELINESS_TIMEOUT_PER_URL);
 
     for unique_url in url_to_usage_map.keys() {
         println!("{}\n", unique_url);
@@ -130,15 +136,46 @@ async fn main() -> Result<(), Error> {
     }
 
     let duration = start.elapsed();
-    let elapsed_ms = duration.as_millis();
-    println!("checked liveliness in {} ms", elapsed_ms);
+    let elapsed_liveliness_ms = duration.as_millis();
+    println!("checked liveliness in {} ms", elapsed_liveliness_ms);
 
     //print!("{:?}", status_to_url_map);
 
-    let mut page = HtmlPage::new().with_title("TITLE");
+    let mut page = HtmlPage::new().with_title("Wien Regierungsmonitor Link Checker Report");
+    let utc_time = Utc::now();
+    let formatted_time: String = utc_time.format("%Y-%m-%d_%H:%M:%S").to_string();
+
+    println!("testtime: {}", formatted_time);
+
+    page = page.with_paragraph(format!(
+        "Konfiguriertes Zeitlimit pro Seite: {}ms",
+        timeout_duration.as_millis()
+    ));
+    page = page.with_paragraph(format!(
+        "Regierungsmonitor abrufen und geparst erfolgreich in: {}ms",
+        elapsed_regierungsmonitor_ms
+    ));
+    page = page.with_paragraph(format!(
+        "{} URLs überprüft in: {}ms",
+        url_to_usage_map.keys().len(),
+        elapsed_liveliness_ms
+    ));
+    let test_time_string = format!("Test beendet um: {} UTC", formatted_time);
+    page = page.with_paragraph(test_time_string);
 
     for status in status_to_url_map.keys() {
-        page = page.with_header(1, format!("{:?}", status));
+        match status {
+            WebStatus::Error => {
+                page = page.with_header(1, "Netzwerk-Fehler");
+            }
+            WebStatus::Result(status_code) => {
+                if status_code.as_u16() == 200u16 {
+                    page = page.with_header(1, "Erfolgreich (OK)");
+                } else {
+                    page = page.with_header(1, format!("Fehler: {}", status_code));
+                }
+            }
+        }
 
         for url in status_to_url_map.get(status).unwrap() {
             page = page.with_header(2, url);
@@ -151,8 +188,11 @@ async fn main() -> Result<(), Error> {
 
     let html_string = page.to_html_string();
 
-    std::fs::write("output_iterative_with_builder.html", html_string)
-        .expect("Unable to write file");
+    std::fs::write(
+        format!("testreport-{}.html", formatted_time.replace(":", "")),
+        html_string,
+    )
+    .expect("Unable to write file");
 
     Ok(())
 }
