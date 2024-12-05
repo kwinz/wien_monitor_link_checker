@@ -1,8 +1,9 @@
-use itertools::Itertools;
+use build_html::{Html, HtmlContainer, HtmlPage};
 use regex::Regex;
 use reqwest::{Error, Response, StatusCode};
 use std::collections::HashMap;
 use std::time::Instant;
+use tokio::time::timeout;
 
 #[derive(Debug, PartialEq, Eq, Clone, Ord, PartialOrd, Hash)]
 pub enum WebStatus {
@@ -90,28 +91,37 @@ async fn main() -> Result<(), Error> {
     }
 
     let duration = start.elapsed();
-
-    // Convert the duration to milliseconds
     let elapsed_ms = duration.as_millis();
     println!("fetched and parsed 9 pages in {} ms", elapsed_ms);
+    let start = Instant::now();
 
     println!("Found {} unique URLs\n", url_to_usage_map.keys().len());
 
     let mut status_to_url_map: HashMap<WebStatus, Vec<String>> = HashMap::new();
 
+    let timeout_duration = tokio::time::Duration::from_millis(5000);
+
     for unique_url in url_to_usage_map.keys() {
         println!("{}\n", unique_url);
 
-        let response: Result<reqwest::Response, Error> = reqwest::get(unique_url).await;
-
+        let response = timeout(timeout_duration, reqwest::get(unique_url)).await;
         if let Ok(response) = response {
-            //println!("Status {}\n", response.status());
+            if let Ok(response) = response {
+                //println!("Status {}\n", response.status());
 
-            status_to_url_map
-                .entry(WebStatus::Result(response.status()))
-                .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
-                .push(unique_url.to_owned());
+                status_to_url_map
+                    .entry(WebStatus::Result(response.status()))
+                    .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
+                    .push(unique_url.to_owned());
+            } else {
+                //network error
+                status_to_url_map
+                    .entry(WebStatus::Error)
+                    .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
+                    .push(unique_url.to_owned());
+            }
         } else {
+            //timeout
             status_to_url_map
                 .entry(WebStatus::Error)
                 .or_insert_with(Vec::new) // Ensure the value is a vector if the key is not present
@@ -119,7 +129,23 @@ async fn main() -> Result<(), Error> {
         }
     }
 
-    print!("{:?}", status_to_url_map);
+    let duration = start.elapsed();
+    let elapsed_ms = duration.as_millis();
+    println!("checked liveliness in {} ms", elapsed_ms);
+
+    //print!("{:?}", status_to_url_map);
+
+    let mut page = HtmlPage::new().with_title("TITLE");
+
+    for status in status_to_url_map.keys() {
+        page = page.with_header(1, format!("{:?}", status));
+        page = page.with_paragraph(format!("{:?}", status_to_url_map.get(status)));
+    }
+
+    let html_string = page.to_html_string();
+
+    std::fs::write("output_iterative_with_builder.html", html_string)
+        .expect("Unable to write file");
 
     Ok(())
 }
